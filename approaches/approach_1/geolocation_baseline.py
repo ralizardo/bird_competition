@@ -23,7 +23,12 @@ from sklearn.metrics import (
     top_k_accuracy_score,
     log_loss,
     classification_report,
-    confusion_matrix
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    balanced_accuracy_score,
+    roc_auc_score
 )
 import warnings
 import os
@@ -212,6 +217,29 @@ def adaptive_stratified_split(X, y, test_size=0.2, random_state=42):
 
     return X_train, X_test, y_train, y_test
 
+def compute_metrics(y_true, y_pred, y_proba, n_classes):
+    """Compute all metrics including imbalanced-friendly ones."""
+    metrics = {
+        # Standard metrics
+        'accuracy': accuracy_score(y_true, y_pred),
+        'top_3_accuracy': top_k_accuracy_score(y_true, y_proba, k=3, labels=np.arange(n_classes)),
+        'top_5_accuracy': top_k_accuracy_score(y_true, y_proba, k=5, labels=np.arange(n_classes)),
+        'log_loss': log_loss(y_true, y_proba, labels=np.arange(n_classes)),
+        # Imbalanced-friendly metrics
+        'balanced_accuracy': balanced_accuracy_score(y_true, y_pred),
+        'f1_macro': f1_score(y_true, y_pred, average='macro', zero_division=0),
+        'f1_weighted': f1_score(y_true, y_pred, average='weighted', zero_division=0),
+        'precision_macro': precision_score(y_true, y_pred, average='macro', zero_division=0),
+        'recall_macro': recall_score(y_true, y_pred, average='macro', zero_division=0),
+    }
+    # ROC-AUC (one-vs-rest, macro average)
+    try:
+        metrics['roc_auc_ovr'] = roc_auc_score(y_true, y_proba, multi_class='ovr', average='macro', labels=np.arange(n_classes))
+    except ValueError:
+        metrics['roc_auc_ovr'] = np.nan  # In case some classes have no samples
+    return metrics
+
+
 def train_and_evaluate_models(X_train, X_test, y_train, y_test, label_encoder):
     """Train all three models and return performance metrics."""
 
@@ -240,14 +268,11 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test, label_encoder):
     lr_pred = lr_model.predict(X_test_scaled)
     lr_proba = lr_model.predict_proba(X_test_scaled)
 
-    results['Logistic Regression'] = {
-        'accuracy': accuracy_score(y_test, lr_pred),
-        'top_3_accuracy': top_k_accuracy_score(y_test, lr_proba, k=3),
-        'top_5_accuracy': top_k_accuracy_score(y_test, lr_proba, k=5),
-        'log_loss': log_loss(y_test, lr_proba)
-    }
+    results['Logistic Regression'] = compute_metrics(y_test, lr_pred, lr_proba, n_classes)
     models['Logistic Regression'] = (lr_model, lr_proba, lr_pred)
     print(f"Accuracy: {results['Logistic Regression']['accuracy']:.4f}")
+    print(f"Balanced Accuracy: {results['Logistic Regression']['balanced_accuracy']:.4f}")
+    print(f"F1 Macro: {results['Logistic Regression']['f1_macro']:.4f}")
 
     # 2. Decision Tree
     print("\n" + "="*50)
@@ -264,14 +289,11 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test, label_encoder):
     dt_pred = dt_model.predict(X_test)
     dt_proba = dt_model.predict_proba(X_test)
 
-    results['Decision Tree'] = {
-        'accuracy': accuracy_score(y_test, dt_pred),
-        'top_3_accuracy': top_k_accuracy_score(y_test, dt_proba, k=3),
-        'top_5_accuracy': top_k_accuracy_score(y_test, dt_proba, k=5),
-        'log_loss': log_loss(y_test, dt_proba)
-    }
+    results['Decision Tree'] = compute_metrics(y_test, dt_pred, dt_proba, n_classes)
     models['Decision Tree'] = (dt_model, dt_proba, dt_pred)
     print(f"Accuracy: {results['Decision Tree']['accuracy']:.4f}")
+    print(f"Balanced Accuracy: {results['Decision Tree']['balanced_accuracy']:.4f}")
+    print(f"F1 Macro: {results['Decision Tree']['f1_macro']:.4f}")
 
     # 3. XGBoost
     print("\n" + "="*50)
@@ -292,14 +314,11 @@ def train_and_evaluate_models(X_train, X_test, y_train, y_test, label_encoder):
     xgb_pred = xgb_model.predict(X_test)
     xgb_proba = xgb_model.predict_proba(X_test)
 
-    results['XGBoost'] = {
-        'accuracy': accuracy_score(y_test, xgb_pred),
-        'top_3_accuracy': top_k_accuracy_score(y_test, xgb_proba, k=3),
-        'top_5_accuracy': top_k_accuracy_score(y_test, xgb_proba, k=5),
-        'log_loss': log_loss(y_test, xgb_proba)
-    }
+    results['XGBoost'] = compute_metrics(y_test, xgb_pred, xgb_proba, n_classes)
     models['XGBoost'] = (xgb_model, xgb_proba, xgb_pred)
     print(f"Accuracy: {results['XGBoost']['accuracy']:.4f}")
+    print(f"Balanced Accuracy: {results['XGBoost']['balanced_accuracy']:.4f}")
+    print(f"F1 Macro: {results['XGBoost']['f1_macro']:.4f}")
 
     return results, models
 
@@ -323,13 +342,13 @@ def create_performance_table(results):
 def plot_metrics(results, models, y_test, label_encoder):
     """Generate and save metric visualizations."""
 
-    # 1. Bar chart comparing all metrics
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
-
     model_names = list(results.keys())
+    colors = ['#e74c3c', '#3498db', '#2ecc71']
+
+    # 1. Standard metrics comparison
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
     metrics = ['accuracy', 'top_3_accuracy', 'top_5_accuracy', 'log_loss']
     titles = ['Accuracy', 'Top-3 Accuracy', 'Top-5 Accuracy', 'Log Loss']
-    colors = ['#2ecc71', '#3498db', '#9b59b6']
 
     for idx, (metric, title) in enumerate(zip(metrics, titles)):
         ax = axes[idx // 2, idx % 2]
@@ -338,7 +357,6 @@ def plot_metrics(results, models, y_test, label_encoder):
         ax.set_title(title, fontsize=12, fontweight='bold')
         ax.set_ylabel(title)
 
-        # Add value labels on bars
         for bar, val in zip(bars, values):
             height = bar.get_height()
             ax.annotate(f'{val:.4f}',
@@ -351,6 +369,33 @@ def plot_metrics(results, models, y_test, label_encoder):
     plt.savefig(OUTPUT_DIR / "metrics_comparison.png", dpi=150, bbox_inches='tight')
     plt.close()
     print(f"Saved: {OUTPUT_DIR / 'metrics_comparison.png'}")
+
+    # 2. Imbalanced metrics comparison (NEW)
+    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
+    imb_metrics = ['balanced_accuracy', 'f1_macro', 'f1_weighted', 'precision_macro', 'recall_macro', 'roc_auc_ovr']
+    imb_titles = ['Balanced Accuracy', 'F1 Macro', 'F1 Weighted', 'Precision Macro', 'Recall Macro', 'ROC-AUC (OvR)']
+
+    for idx, (metric, title) in enumerate(zip(imb_metrics, imb_titles)):
+        ax = axes[idx // 3, idx % 3]
+        values = [results[m][metric] for m in model_names]
+        bars = ax.bar(model_names, values, color=colors)
+        ax.set_title(title, fontsize=12, fontweight='bold')
+        ax.set_ylabel(title)
+        ax.set_ylim(0, 1.0)
+
+        for bar, val in zip(bars, values):
+            height = bar.get_height()
+            if not np.isnan(val):
+                ax.annotate(f'{val:.4f}',
+                           xy=(bar.get_x() + bar.get_width() / 2, height),
+                           xytext=(0, 3),
+                           textcoords="offset points",
+                           ha='center', va='bottom', fontsize=10)
+
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / "imbalanced_metrics_comparison.png", dpi=150, bbox_inches='tight')
+    plt.close()
+    print(f"Saved: {OUTPUT_DIR / 'imbalanced_metrics_comparison.png'}")
 
     # 2. Accuracy comparison (single focused plot)
     fig, ax = plt.subplots(figsize=(10, 6))
