@@ -118,7 +118,7 @@ def adaptive_stratified_split(X, y, test_size=0.2, random_state=42):
     Stratified split with adaptive strategy for small classes.
 
     Strategy:
-    - Classes with 1 sample: assigned to training set only (can't split)
+    - Classes with 1 sample: duplicated in both train and test sets
     - Classes with 2-4 samples: 50/50 split (at least 1 in each set)
     - Classes with 5+ samples: standard test_size split (e.g., 80/20)
 
@@ -140,8 +140,9 @@ def adaptive_stratified_split(X, y, test_size=0.2, random_state=42):
         n_samples = len(cls_indices)
 
         if n_samples == 1:
-            # Only 1 sample: put in training set
+            # Only 1 sample: put in BOTH training and test sets
             train_indices.extend(cls_indices)
+            test_indices.extend(cls_indices)
         elif n_samples <= 4:
             # 2-4 samples: 50/50 split
             split_point = n_samples // 2
@@ -168,7 +169,7 @@ def adaptive_stratified_split(X, y, test_size=0.2, random_state=42):
 
     # Report split statistics
     print(f"\nAdaptive Stratified Split:")
-    print(f"  Classes with 1 sample (train only): {sum(1 for c in class_counts if c == 1)}")
+    print(f"  Classes with 1 sample (in both sets): {sum(1 for c in class_counts if c == 1)}")
     print(f"  Classes with 2-4 samples (50/50 split): {sum(1 for c in class_counts if 2 <= c <= 4)}")
     print(f"  Classes with 5+ samples ({int((1-test_size)*100)}/{int(test_size*100)} split): {sum(1 for c in class_counts if c >= 5)}")
 
@@ -186,7 +187,7 @@ def adaptive_stratified_split(X, y, test_size=0.2, random_state=42):
     print(f"  Classes in train: {len(train_classes)}")
     print(f"  Classes in test: {len(test_classes)}")
     print(f"  Classes in both train & test: {len(classes_in_both)}")
-    print(f"  Classes only in train (1-sample classes): {len(classes_only_in_train)}")
+    print(f"  Classes only in train: {len(classes_only_in_train)}")
     print(f"  Classes only in test: {len(classes_only_in_test)}")
 
     if classes_only_in_test:
