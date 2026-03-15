@@ -200,13 +200,15 @@ def adaptive_stratified_split(X, y, test_size=0.2, random_state=42):
     else:
         print(f"  ✓ All classes accounted for in train/test split")
 
-    # Verify sample counts
+    # Verify sample counts (accounting for duplicated 1-sample classes)
+    n_duplicated = sum(1 for c in class_counts if c == 1)
     print(f"\nSample counts:")
     print(f"  Training samples: {len(X_train)}")
     print(f"  Testing samples: {len(X_test)}")
-    print(f"  Total: {len(X_train) + len(X_test)} (original: {len(X)})")
+    print(f"  Duplicated samples (1-sample classes): {n_duplicated}")
+    print(f"  Total: {len(X_train) + len(X_test)} (original + duplicates: {len(X) + n_duplicated})")
 
-    assert len(X_train) + len(X_test) == len(X), "Sample count mismatch!"
+    assert len(X_train) + len(X_test) == len(X) + n_duplicated, "Sample count mismatch!"
 
     return X_train, X_test, y_train, y_test
 
