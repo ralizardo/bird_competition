@@ -1,0 +1,4 @@
+Model,accuracy,top_3_accuracy,top_5_accuracy,log_loss
+Logistic Regression,0.0486,0.1191,0.1766,4.4816
+Decision Tree,0.1502,0.2794,0.3499,17.1822
+XGBoost,0.1428,0.2721,0.3585,3.7293
