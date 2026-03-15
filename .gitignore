@@ -1,8 +1,12 @@
-# Data
-data/raw/*
+# Data - keep CSV/txt, ignore large audio folders
+data/raw/train_audio/
+data/raw/train_soundscapes/
+data/raw/test_soundscapes/
 data/processed/*
 data/external/*
 !data/raw/.gitkeep
+!data/raw/*.csv
+!data/raw/*.txt
 !data/processed/.gitkeep
 !data/external/.gitkeep
 
