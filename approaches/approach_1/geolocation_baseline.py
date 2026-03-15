@@ -26,12 +26,51 @@ from sklearn.metrics import (
     confusion_matrix
 )
 import warnings
+import os
+import sys
 warnings.filterwarnings('ignore')
 
-# Paths
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-DATA_PATH = PROJECT_ROOT / "data" / "raw" / "train.csv"
-OUTPUT_DIR = Path(__file__).parent / "outputs"
+# Detect environment and set paths
+def get_project_paths():
+    """Get project paths, handling both local and Colab environments."""
+    # Check if running in Google Colab
+    IN_COLAB = 'google.colab' in sys.modules
+
+    if IN_COLAB:
+        # Colab: look for data in common locations
+        possible_roots = [
+            Path('/content/bird_competition'),
+            Path('/content/BirdCLEF_2026'),
+            Path('/content'),
+        ]
+        for root in possible_roots:
+            if (root / 'data' / 'raw' / 'train.csv').exists():
+                return root, root / 'data' / 'raw' / 'train.csv'
+
+        # Data not found - provide helpful message
+        print("="*60)
+        print("DATA NOT FOUND - Please download the competition data first:")
+        print("="*60)
+        print("""
+# Run these commands in a Colab cell:
+
+!pip install kaggle
+from google.colab import files
+files.upload()  # Upload your kaggle.json
+
+!mkdir -p ~/.kaggle && mv kaggle.json ~/.kaggle/ && chmod 600 ~/.kaggle/kaggle.json
+!kaggle competitions download -c birdclef-2026 -p /content/bird_competition/data/raw/
+!unzip -q /content/bird_competition/data/raw/birdclef-2026.zip -d /content/bird_competition/data/raw/
+        """)
+        sys.exit(1)
+    else:
+        # Local environment
+        project_root = Path(__file__).parent.parent.parent
+        data_path = project_root / "data" / "raw" / "train.csv"
+        return project_root, data_path
+
+PROJECT_ROOT, DATA_PATH = get_project_paths()
+OUTPUT_DIR = Path(__file__).parent / "outputs" if '__file__' in dir() else Path('/content/bird_competition/approaches/approach_1/outputs')
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 def load_and_prepare_data():
