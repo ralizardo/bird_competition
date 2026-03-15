@@ -1,0 +1,34 @@
+# Data manipulation
+numpy
+pandas
+
+# Audio processing
+librosa
+soundfile
+audioread
+
+# Machine Learning
+scikit-learn
+torch
+torchaudio
+torchvision
+
+# Deep Learning utilities
+timm
+transformers
+
+# Visualization
+matplotlib
+seaborn
+
+# Jupyter
+jupyter
+ipykernel
+
+# Kaggle
+kaggle
+
+# Utilities
+tqdm
+python-dotenv
+pyyaml
