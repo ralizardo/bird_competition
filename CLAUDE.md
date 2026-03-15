@@ -75,7 +75,7 @@ Bridge the domain gap between:
 ### Approach 1: Geolocation Baseline (Implemented)
 **Location:** `approaches/approach_1/geolocation_baseline.py`
 
-Uses latitude/longitude coordinates to predict species as a baseline to understand geographic predictive power.
+**Note:** First approach WITHOUT feature engineering. Uses only raw latitude/longitude coordinates to predict species as a baseline to understand geographic predictive power.
 
 **Models:**
 - Logistic Regression (multinomial, scaled features)
@@ -84,11 +84,30 @@ Uses latitude/longitude coordinates to predict species as a baseline to understa
 
 **Key Features:**
 - Adaptive stratified split for handling small classes:
-  - 1 sample: train only
+  - 1 sample: duplicated in both train/test
   - 2-4 samples: 50/50 split
   - 5+ samples: 80/20 split
-- Metrics: accuracy, top-3/top-5 accuracy, log loss
+- Metrics: accuracy, top-k accuracy, log loss, balanced accuracy, F1 (macro/weighted), precision, recall, ROC-AUC
 - Outputs: `approaches/approach_1/outputs/` (performance_table.csv, plots)
+
+**Results (206 classes, 35,549 samples):**
+
+| Model | Accuracy | Balanced Acc | F1 Macro | ROC-AUC |
+|-------|----------|--------------|----------|---------|
+| Logistic Regression | 4.9% | 2.0% | 1.2% | 0.75 |
+| Decision Tree | **15.0%** | **12.9%** | **11.5%** | 0.73 |
+| XGBoost | 14.3% | 12.5% | 10.5% | **0.87** |
+
+**Key Findings:**
+1. **Geolocation alone has limited predictive power** - Best accuracy ~15% (random baseline: 0.5%)
+2. **Decision Tree** wins on classification metrics; **XGBoost** wins on probability calibration (ROC-AUC: 0.87)
+3. **Logistic Regression struggles** with non-linear geographic boundaries between species
+4. **ROC-AUC is promising** - XGBoost's 0.87 suggests geolocation can rank species well, useful as prior probabilities
+
+**Recommendations:**
+- Use geolocation as a supplementary feature, not standalone
+- XGBoost probabilities can serve as priors to combine with audio models
+- Audio features are essential for accurate species classification
 
 ### Approach 2: Direct Multi-Label Classification (Recommended)
 1. Convert 5-second audio → mel spectrograms
